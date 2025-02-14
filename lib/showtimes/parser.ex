@@ -99,6 +99,9 @@ defmodule Showtimes.Parser do
     iex> Showtimes.Parser.parse_time("9AM-12PM, $10 @ Red Emma's")
     {"9AM-12PM", ", $10 @ Red Emma's"}
 
+    iex> Showtimes.Parser.parse_time("7:30PM & 9PM, $10 @ The Undercroft")
+    {"7:30PM & 9PM", ", $10 @ The Undercroft"}
+
     iex> Showtimes.Parser.parse_time("foobar")
     {:error, "foobar"}
   """
@@ -106,7 +109,12 @@ defmodule Showtimes.Parser do
     parse_and(
       [
         Showtimes.Parser.do_parse_time(),
-        parse_optional(parse_and([parse_string("-"), Showtimes.Parser.do_parse_time()]))
+        parse_optional(
+          parse_or([
+            parse_and([parse_string("-"), Showtimes.Parser.do_parse_time()]),
+            parse_and([parse_string(" & "), Showtimes.Parser.do_parse_time()])
+          ])
+        )
       ],
       s
     )
@@ -130,12 +138,13 @@ defmodule Showtimes.Parser do
   end
 
   def parse_price(s) do
-    parse_and(
-      [
+    parse_optional(
+      parse_and([
         Showtimes.Parser.do_parse_price(),
         parse_optional(parse_and([parse_string("-"), Showtimes.Parser.do_parse_price()]))
-      ],
-      s
+      ]),
+      s,
+      "N/A"
     )
   end
 
@@ -149,13 +158,13 @@ defmodule Showtimes.Parser do
         parse_string("$"),
         parse_or([
           parse_string("FREE"),
+          parse_string("SOLD OUT"),
           parse_one_or_more(Showtimes.Parser.parse_number())
         ])
       ],
       s
     )
   end
-
 
   def parse_number do
     &parse_number(&1)
@@ -249,9 +258,9 @@ defmodule Showtimes.Parser do
     iex> Showtimes.Parser.parse_optional(Showtimes.Parser.parse_string("foo"), "baz")
     {"", "baz"}
   """
-  def parse_optional(parser_fn, s) do
+  def parse_optional(parser_fn, s, default \\ "") do
     case parser_fn.(s) do
-      {:error, _} -> {"", s}
+      {:error, _} -> {default, s}
       {match, rest} -> {match, rest}
     end
   end
