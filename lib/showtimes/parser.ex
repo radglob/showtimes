@@ -81,6 +81,10 @@ defmodule Showtimes.Parser do
     end
   end
 
+  def parse_any do
+    &parse_any(&1)
+  end
+
   def parse_any(s) do
     {s, ""}
   end
@@ -137,11 +141,31 @@ defmodule Showtimes.Parser do
     )
   end
 
+  @doc """
+  ## Examples
+    iex> Showtimes.Parser.parse_price("$10 @ Ottobar")
+    {"$10", " @ Ottobar"}
+
+    iex> Showtimes.Parser.parse_price("$10-$15 @ Ottobar")
+    {"$10-$15", " @ Ottobar"}
+
+    iex> Showtimes.Parser.parse_price("$15 adv/$20 doors @ Zen West")
+    {"$15 adv/$20 doors", " @ Zen West"}
+
+    iex> Showtimes.Parser.parse_price("$10 (or clothing donation) @ Jeff's House")
+    {"$10 (or clothing donation)", " @ Jeff's House"}
+  """
   def parse_price(s) do
     parse_optional(
       parse_and([
         Showtimes.Parser.do_parse_price(),
-        parse_optional(parse_and([parse_string("-"), Showtimes.Parser.do_parse_price()]))
+        parse_optional(
+          parse_or([
+            parse_and([parse_string("-"), Showtimes.Parser.do_parse_price()]),
+            parse_and([parse_string(" adv/"), Showtimes.Parser.do_parse_price(), parse_string(" doors")]),
+            parse_string(" (or clothing donation)")
+          ])
+        )
       ]),
       s,
       "N/A"

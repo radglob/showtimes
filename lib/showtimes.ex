@@ -10,6 +10,7 @@ defmodule Showtimes do
 
   @url "https://baltshowplace.tumblr.com"
   @months ~w(January February March April May June July August September October November December)
+  @timezone "America/New_York"
 
   def main do
     {:ok, resp} = HTTPoison.get(@url)
@@ -18,7 +19,7 @@ defmodule Showtimes do
     # hash = hash_document(Floki.raw_html(post))
     # Check hash against database, write if different.
     events = parse_events(post)
-    today = Date.utc_today() |> Date.to_string()
+    today = DateTime.now!(@timezone) |> DateTime.to_date() |> Date.to_string()
 
     IO.puts("Events on #{today}:")
     Enum.each(events[today], fn %{

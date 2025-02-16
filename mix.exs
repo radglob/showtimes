@@ -22,7 +22,8 @@ defmodule Showtimes.MixProject do
   defp deps do
     [
       {:httpoison, "~> 2.2.1"},
-      {:floki, "~> 0.37.0"}
+      {:floki, "~> 0.37.0"},
+      {:tzdata, "~> 1.1"}
     ]
   end
 end
