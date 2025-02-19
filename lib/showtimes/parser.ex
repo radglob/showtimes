@@ -154,6 +154,9 @@ defmodule Showtimes.Parser do
 
     iex> Showtimes.Parser.parse_price("$10 (or clothing donation) @ Jeff's House")
     {"$10 (or clothing donation)", " @ Jeff's House"}
+
+    iex> Showtimes.Parser.parse_price("$SOLD OUT @ The Tannenbaum")
+    {"$SOLD OUT", " @ The Tannenbaum"}
   """
   def parse_price(s) do
     parse_optional(
@@ -168,7 +171,7 @@ defmodule Showtimes.Parser do
         )
       ]),
       s,
-      "N/A"
+      "$FREE"
     )
   end
 

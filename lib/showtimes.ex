@@ -3,6 +3,7 @@ defmodule Showtimes do
   alias Floki
 
   alias Showtimes.Parser
+  alias Showtimes.Processor
 
   @moduledoc """
   Documentation for `Showtimes`.
@@ -22,6 +23,7 @@ defmodule Showtimes do
     today = DateTime.now!(@timezone) |> DateTime.to_date() |> Date.to_string()
 
     IO.puts("Events on #{today}:")
+
     Enum.each(events[today], fn %{
                                   performers: performers,
                                   time: time,
@@ -47,7 +49,10 @@ defmodule Showtimes do
         nil
       else
         events =
-          Enum.map(ps, fn p -> p |> Floki.text() |> Parser.parse_event() end) |> Enum.filter(& &1)
+          Enum.map(ps, fn p ->
+            p |> Floki.text() |> Parser.parse_event() |> Processor.process_event(date)
+          end)
+          |> Enum.filter(& &1)
 
         {Date.to_string(date), events}
       end
