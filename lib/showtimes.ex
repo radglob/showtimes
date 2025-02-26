@@ -19,7 +19,7 @@ defmodule Showtimes do
     post = Floki.find(doc, ".post")
     # hash = hash_document(Floki.raw_html(post))
     # Check hash against database, write if different.
-    events = parse_events(post)
+    events = handle_events(post)
     today = DateTime.now!(@timezone) |> DateTime.to_date() |> Date.to_string()
 
     IO.puts("Events on #{today}:")
@@ -34,7 +34,7 @@ defmodule Showtimes do
     end)
   end
 
-  def parse_events(post) do
+  def handle_events(post) do
     Floki.find(post, "h2:not(.title), p")
     |> Enum.chunk_by(fn {node_type, _, _} -> node_type == "h2" end)
     |> Enum.chunk_every(2)

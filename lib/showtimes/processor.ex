@@ -1,4 +1,25 @@
 defmodule Showtimes.Processor do
+  @price_defaults %{
+    min_price: nil,
+    max_price: nil,
+    alternate_price: nil,
+    advance_price: nil,
+    door_price: nil,
+    sold_out: false
+  }
+
+  @doc """
+  ## Examples
+    iex> Showtimes.Processor.process_event(%{performers: "Thonian Horde, The Edge Of Desolation, Chiaroscuro, Revvnant", time: "7PM", price: "$15", location: "Ottobar" }, ~D[2025-02-26])
+    %{performers: "Thonian Horde, The Edge Of Desolation, Chiaroscuro, Revvnant", location: "Ottobar", advance_price: nil, alternate_price: nil, door_price: nil, duration: nil, max_price: nil, min_price: 1500, sold_out: false, start_times: [DateTime.new!(~D[2025-02-26], ~T[19:00:00], "America/New_York")]}
+      
+  """
+  def process_event(event, date) do
+    %{performers: event[:performers], location: event[:location]}
+    |> Map.merge(process_price(event[:price]))
+    |> Map.merge(process_time(event[:time], date))
+  end
+
   @doc """
   ## Examples
     iex> Showtimes.Processor.process_price("$7")
@@ -19,14 +40,6 @@ defmodule Showtimes.Processor do
     %{min_price: nil, max_price: nil, alternate_price: nil, door_price: nil, advance_price: nil, sold_out: false}
   """
 
-  @price_defaults %{
-    min_price: nil,
-    max_price: nil,
-    alternate_price: nil,
-    advance_price: nil,
-    door_price: nil,
-    sold_out: false
-  }
   def process_price(price) do
     case price do
       <<"$", min_price::binary-size(1)>> ->
