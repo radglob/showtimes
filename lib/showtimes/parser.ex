@@ -8,6 +8,9 @@ defmodule Showtimes.Parser do
 
     iex> Showtimes.Parser.parse_event("Contact Mic: Open Experimental Jam Series - 7:30PM, $FREE @ Wax Atlas")
     %{performers: "Contact Mic: Open Experimental Jam Series", time: "7:30PM", price: "$FREE", location: "Wax Atlas"}
+
+    iex> Showtimes.Parser.parse_event("Tumble Home. 7PM $FREE @ Peabody Heights Brewery")
+    %{performers: "Tumble Home", time: "7PM", price: "$FREE", location: "Peabody Heights Brewery"}
   """
   def parse_event(s) do
     s = String.trim(s)
@@ -25,7 +28,7 @@ defmodule Showtimes.Parser do
              ),
            {_, rest} <- parse_or([parse_string(". "), parse_string(" - ")], rest),
            {time, rest} <- parse_time(rest),
-           {_, rest} <- parse_string(", ", rest),
+           {_, rest} <- parse_or([parse_string(", "), parse_string(" ")], rest),
            {price, rest} <- parse_price(rest),
            {_, rest} <- parse_string(" @ ", rest),
            {location, ""} <- parse_any(rest) do
@@ -107,11 +110,11 @@ defmodule Showtimes.Parser do
     {"7:30PM & 9PM", ", $10 @ The Undercroft"}
 
     iex> Showtimes.Parser.parse_time("foobar")
-    {:error, "foobar"}
+    {"", "foobar"}
   """
   def parse_time(s) do
-    parse_and(
-      [
+    parse_optional(
+      parse_and([
         Showtimes.Parser.do_parse_time(),
         parse_optional(
           parse_or([
@@ -119,7 +122,7 @@ defmodule Showtimes.Parser do
             parse_and([parse_string(" & "), Showtimes.Parser.do_parse_time()])
           ])
         )
-      ],
+      ]),
       s
     )
   end
@@ -155,6 +158,9 @@ defmodule Showtimes.Parser do
     iex> Showtimes.Parser.parse_price("$10 (or clothing donation) @ Jeff's House")
     {"$10 (or clothing donation)", " @ Jeff's House"}
 
+    iex> Showtimes.Parser.parse_price("$19.01 @ The Recher")
+    {"$19.01", " @ The Recher"}
+
     iex> Showtimes.Parser.parse_price("$SOLD OUT @ The Tannenbaum")
     {"$SOLD OUT", " @ The Tannenbaum"}
   """
@@ -165,7 +171,11 @@ defmodule Showtimes.Parser do
         parse_optional(
           parse_or([
             parse_and([parse_string("-"), Showtimes.Parser.do_parse_price()]),
-            parse_and([parse_string(" adv/"), Showtimes.Parser.do_parse_price(), parse_string(" doors")]),
+            parse_and([
+              parse_string(" adv/"),
+              Showtimes.Parser.do_parse_price(),
+              parse_string(" doors")
+            ]),
             parse_string(" (or clothing donation)")
           ])
         )
@@ -186,7 +196,15 @@ defmodule Showtimes.Parser do
         parse_or([
           parse_string("FREE"),
           parse_string("SOLD OUT"),
-          parse_one_or_more(Showtimes.Parser.parse_number())
+          parse_and([
+            parse_one_or_more(Showtimes.Parser.parse_number()),
+            parse_optional(
+              parse_and([
+                parse_string("."),
+                parse_one_or_more(Showtimes.Parser.parse_number())
+              ])
+            )
+          ])
         ])
       ],
       s

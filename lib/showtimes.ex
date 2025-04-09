@@ -2,8 +2,12 @@ defmodule Showtimes do
   alias HTTPoison
   alias Floki
 
+  import Ecto.Query
+
+  alias Showtimes.Event
   alias Showtimes.Parser
   alias Showtimes.Processor
+  alias Showtimes.Repo
 
   @moduledoc """
   Documentation for `Showtimes`.
@@ -19,46 +23,53 @@ defmodule Showtimes do
     post = Floki.find(doc, ".post")
     # hash = hash_document(Floki.raw_html(post))
     # Check hash against database, write if different.
-    events = handle_events(post)
-    today = DateTime.now!(@timezone) |> DateTime.to_date() |> Date.to_string()
+    handle_events(post)
+
+    today = DateTime.now!(@timezone) |> DateTime.to_date()
+    query = from(e in Event, where: e.date == ^today)
+    events = Repo.all(query)
 
     IO.puts("Events on #{today}:")
 
-    Enum.each(events[today], fn %{
-                                  performers: performers,
-                                  time: time,
-                                  price: price,
-                                  location: location
-                                } ->
-      IO.puts("#{performers} at #{location}, #{time}, #{price}")
+    Enum.each(events, fn event ->
+      IO.inspect(event)
     end)
   end
 
   def handle_events(post) do
-    Floki.find(post, "h2:not(.title), p")
-    |> Enum.chunk_by(fn {node_type, _, _} -> node_type == "h2" end)
-    |> Enum.chunk_every(2)
-    |> Enum.map(fn [h2, ps] ->
-      {:ok, date} =
-        h2
-        |> List.first()
-        |> Floki.text()
-        |> parse_date()
+    events =
+      Floki.find(post, "h2:not(.title), p")
+      |> Enum.chunk_by(fn {node_type, _, _} -> node_type == "h2" end)
+      |> Enum.chunk_every(2)
+      |> Enum.map(fn [h2, ps] ->
+        {:ok, date} =
+          h2
+          |> List.first()
+          |> Floki.text()
+          |> parse_date()
 
-      if is_nil(date) do
-        nil
-      else
-        events =
-          Enum.map(ps, fn p ->
-            p |> Floki.text() |> Parser.parse_event() |> Processor.process_event(date)
+        if is_nil(date) do
+          nil
+        else
+          ps
+          |> Enum.map(fn p ->
+            text =
+              p |> Floki.text() |> String.trim()
+
+            if text != "" do
+              text |> Parser.parse_event() |> Processor.process_event(date)
+            end
           end)
-          |> Enum.filter(& &1)
+        end
+      end)
+      |> List.flatten()
+      |> Enum.filter(& &1)
 
-        {Date.to_string(date), events}
-      end
+    Enum.each(events, fn event ->
+      %Event{}
+      |> Event.changeset(event)
+      |> Repo.insert()
     end)
-    |> Enum.filter(& &1)
-    |> Enum.into(%{})
   end
 
   @doc """
@@ -87,7 +98,7 @@ defmodule Showtimes do
   end
 
   defp hash_document(html) do
-    :crypto.hash(:md5, html)
+    :crypto.hash(:sha256, html)
     |> Base.encode16()
     |> String.downcase()
   end
