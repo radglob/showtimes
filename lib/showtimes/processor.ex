@@ -75,6 +75,8 @@ defmodule Showtimes.Processor do
     %{min_price: 1000, max_price: nil, alternate_price: "(or clothing donation)", door_price: nil, advance_price: nil, sold_out: false}
     iex> Showtimes.Processor.process_price("$SOLD OUT")
     %{min_price: nil, max_price: nil, alternate_price: nil, door_price: nil, advance_price: nil, sold_out: true}
+    iex> Showtimes.Processor.process_price("$Donations")
+    %{min_price: nil, max_price: nil, alternate_price: "Donations", door_price: nil, advance_price: nil, sold_out: false}
     iex> Showtimes.Processor.process_price("$FREE")
     %{min_price: nil, max_price: nil, alternate_price: nil, door_price: nil, advance_price: nil, sold_out: false}
   """
@@ -85,6 +87,9 @@ defmodule Showtimes.Processor do
     case parts do
       ["$FREE"] ->
         @price_defaults
+
+      ["$Donations"] ->
+        Map.merge(@price_defaults, %{alternate_price: "Donations"})
 
       [s] ->
         case String.split(s, "-") do
