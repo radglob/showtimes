@@ -11,6 +11,9 @@ defmodule Showtimes.Parser do
 
     iex> Showtimes.Parser.parse_event("Tumble Home. 7PM $FREE @ Peabody Heights Brewery")
     %{performers: "Tumble Home", time: "7PM", price: "$FREE", location: "Peabody Heights Brewery"}
+
+    iex> Showtimes.Parser.parse_event("La Urss, Pearl, Chromafix, Cataclysmic. 9PM @ Holy Frijoles")
+    %{performers: "La Urss, Pearl, Chromafix, Cataclysmic", time: "9PM", price: "$FREE", location: "Holy Frijoles"}
   """
   def parse_event(s) do
     s = String.trim(s)
@@ -18,21 +21,36 @@ defmodule Showtimes.Parser do
     if String.length(s) == 0 do
       nil
     else
-      with {performers, rest} <-
-             parse_until(
-               parse_or([
-                 parse_and([parse_string(". "), Showtimes.Parser.parse_number()]),
-                 parse_and([parse_string(" - "), Showtimes.Parser.parse_number()])
-               ]),
-               s
-             ),
-           {_, rest} <- parse_or([parse_string(". "), parse_string(" - ")], rest),
-           {time, rest} <- parse_time(rest),
-           {_, rest} <- parse_or([parse_string(", "), parse_string(" ")], rest),
-           {price, rest} <- parse_price(rest),
-           {_, rest} <- parse_string(" @ ", rest),
-           {location, ""} <- parse_any(rest) do
-        %{performers: performers, time: time, price: price, location: location}
+      {performers, rest} =
+        parse_until(
+          parse_or([
+            parse_and([parse_string(". "), Showtimes.Parser.parse_number()]),
+            parse_and([parse_string(". $")]),
+            parse_and([parse_string(" - "), Showtimes.Parser.parse_number()])
+          ]),
+          s
+        )
+
+      if String.starts_with?(rest, ". $") do
+        with {_, rest} <- parse_or([parse_string(". "), parse_string(" - ")], rest),
+             {price, rest} <- parse_price(rest),
+             {_, rest} <- parse_or([parse_string(", "), parse_string(" ")], rest),
+             {time, rest} <- parse_time(rest),
+             {_, rest} <-
+               parse_and([parse_optional(parse_string(" ")), parse_string("@ ")], rest),
+             {location, ""} <- parse_any(rest) do
+          %{performers: performers, time: time, price: price, location: location}
+        end
+      else
+        with {_, rest} <- parse_or([parse_string(". "), parse_string(" - ")], rest),
+             {time, rest} <- parse_time(rest),
+             {_, rest} <- parse_or([parse_string(", "), parse_string(" ")], rest),
+             {price, rest} <- parse_price(rest),
+             {_, rest} <-
+               parse_and([parse_optional(parse_string(" ")), parse_string("@ ")], rest),
+             {location, ""} <- parse_any(rest) do
+          %{performers: performers, time: time, price: price, location: location}
+        end
       end
     end
   end
@@ -163,6 +181,9 @@ defmodule Showtimes.Parser do
 
     iex> Showtimes.Parser.parse_price("$SOLD OUT @ The Tannenbaum")
     {"$SOLD OUT", " @ The Tannenbaum"}
+
+    iex> Showtimes.Parser.parse_price(" @ Holy Frijoles")
+    {"$FREE", " @ Holy Frijoles"}
   """
   def parse_price(s) do
     parse_optional(

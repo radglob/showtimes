@@ -32,7 +32,7 @@ defmodule Showtimes do
     IO.puts("Events on #{today}:")
 
     Enum.each(events, fn event ->
-      IO.inspect(event)
+      IO.puts(event)
     end)
   end
 

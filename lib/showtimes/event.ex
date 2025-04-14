@@ -1,6 +1,8 @@
 defmodule Showtimes.Event do
   use Ecto.Schema
 
+  import Showtimes.TimeHelpers, only: [time_with_duration: 2]
+
   import Ecto.Changeset
 
   schema "events" do
@@ -36,5 +38,20 @@ defmodule Showtimes.Event do
     ])
     |> validate_required([:performers, :location, :date])
     |> unique_constraint([:performers, :location, :start_time])
+  end
+
+  defimpl String.Chars, for: Showtimes.Event do
+    def to_string(%{performers: performers, location: location, date: date, start_time: nil}) do
+      "#{performers} at #{location} on #{date} (contact venue for time)"
+    end
+
+    def to_string(%{
+          performers: performers,
+          location: location,
+          start_time: start_time,
+          duration: duration
+        }) do
+      "#{performers} at #{location} on #{time_with_duration(start_time, duration)}"
+    end
   end
 end

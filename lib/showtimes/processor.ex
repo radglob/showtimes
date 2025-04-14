@@ -17,6 +17,13 @@ defmodule Showtimes.Processor do
   def process_event(event, date) do
     %{start_times: start_times, duration: duration} = process_time(event[:time], date)
 
+    try do
+      String.trim(event[:performers])
+    rescue
+      _ ->
+        IO.inspect(event)
+    end
+
     case start_times do
       [] ->
         [
